@@ -42,7 +42,7 @@ export class Controller {
 
     private blindClicked(): boolean {
         var config = model.Config.singleton();
-        config.setBlind(!config.getBlind());
+        config.setBlindEnabled(!config.isBlindEnabled());
         this.mux.onConfigChange();
         return true;
     }

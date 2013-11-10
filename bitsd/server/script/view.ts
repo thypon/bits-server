@@ -6,20 +6,20 @@ import model = require("model");
 import c = require("controller");
 import debug = require("debug");
 
-class Component {
+class DOMComponent {
     constructor(public $ctx: ZeptoCollection) {}
 }
 
-class MainComponent extends Component implements model.IConfigChangeEventListener {
+class MainComponent extends DOMComponent implements model.IConfigChangeEventListener {
     constructor($ctx: ZeptoCollection) {
         super($ctx);
-        if (model.Config.singleton().getBlind()) {
+        if (model.Config.singleton().isBlindEnabled()) {
             this.$ctx.addClass("blind");
         }
     }
 
     onConfigChange():void {
-        if (model.Config.singleton().getBlind()) {
+        if (model.Config.singleton().isBlindEnabled()) {
             this.$ctx.addClass("blind");
         } else {
             this.$ctx.removeClass("blind");
@@ -27,7 +27,25 @@ class MainComponent extends Component implements model.IConfigChangeEventListene
     }
 }
 
-class TemperatureComponent extends Component implements model.ITemperatureHistoryEventListener {
+class NotificationComponent implements model.IStatusEventListener, model.IMessageEventListener {
+    onStatus(event:IStatusEvent):void {
+        if (Config.singleton().isNotificationEnabled()) {
+            if (event.status === model.Status.open) {
+                new Notification('Sede Aperta', {});
+            } else {
+                new Notification('Sede Chiusa', {});
+            }
+        }
+    }
+
+    onMessage(event:IMessageEvent):void {
+        if (Config.singleton().isNotificationEnabled()) {
+            new Notification('Nuovo Messaggio da ' + event.from.name, {});
+        }
+    }
+}
+
+class TemperatureComponent extends DOMComponent implements model.ITemperatureHistoryEventListener {
     private $value = this.$ctx.find('.value');
     private $trend = this.$ctx.find('.trend');
 
@@ -50,7 +68,7 @@ class TemperatureComponent extends Component implements model.ITemperatureHistor
     }
 }
 
-class TemperatureChartComponent extends Component implements model.ITemperatureHistoryEventListener {
+class TemperatureChartComponent extends DOMComponent implements model.ITemperatureHistoryEventListener {
     private chart = new TemperatureChart(this.$ctx);
     private temperatures: model.ITemperatureEvent[] = [];
     private MAXTEMP: number = 100;
@@ -72,7 +90,7 @@ class TemperatureChartComponent extends Component implements model.ITemperatureH
     }
 }
 
-class StatusComponent extends Component implements model.IStatusEventListener {
+class StatusComponent extends DOMComponent implements model.IStatusEventListener {
     private $value = this.$ctx.find('.value');
     private $timestamp = this.$ctx.find('.timestamp');
     private $modifiedBy = this.$ctx.find('.modified_by');
@@ -85,7 +103,7 @@ class StatusComponent extends Component implements model.IStatusEventListener {
     }
 }
 
-class MessageComponent extends Component implements model.IMessageEventListener {
+class MessageComponent extends DOMComponent implements model.IMessageEventListener {
     private $user = this.$ctx.find('.user');
     private $timestamp = this.$ctx.find('.timestamp');
     private $value = this.$ctx.find('.value');
@@ -98,7 +116,7 @@ class MessageComponent extends Component implements model.IMessageEventListener 
     }
 }
 
-class TitleComponent extends Component implements model.IStatusEventListener {
+class TitleComponent extends DOMComponent implements model.IStatusEventListener {
     private initTitle: string = document.title;
 
     onStatus(event: model.IStatusEvent) {
@@ -111,7 +129,7 @@ class TitleComponent extends Component implements model.IStatusEventListener {
     }
 }
 
-class HistoryBodyComponent extends Component implements model.IStatusEventListener {
+class HistoryBodyComponent extends DOMComponent implements model.IStatusEventListener {
     private firstStatus = true;
 
     onStatus(event: model.IStatusEvent) {
@@ -186,9 +204,16 @@ export interface UI {
 }
 
 export class MainUI implements UI {
+    private notificationComponent: NotificationComponent;
     private constructor() {}
 
     init(c:c.Controller): void {
+        if (Config.singleton().isNotificationEnabled()) {
+            this.notificationComponent = new NotificationComponent();
+            c.mux.addStatusEventListener(this.notificationComponent);
+            c.mux.addMessageEventListener(this.notificationComponent);
+        }
+
         c.mux.addConfigChangeEventListener(new MainComponent($('html')));
         c.mux.addStatusEventListener(new TitleComponent($('[rel="icon"]')));
     }

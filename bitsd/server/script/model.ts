@@ -1,4 +1,5 @@
 /// <reference path="helpers/cookies.d.ts" />
+/// <reference path="helpers/notification.d.ts" />
 "use strict"
 
 import debug = require("debug");
@@ -43,13 +44,29 @@ export class Config {
         return Config.instance;
     }
 
-    setBlind(val: boolean): void {
-        this.blindEnabled = val;
+    setBlindEnabled(enabled: boolean): void {
+        this.blindEnabled = enabled;
         this.save();
     }
 
-    getBlind(): boolean {
+    isBlindEnabled(): boolean {
         return this.blindEnabled;
+    }
+
+    setNotificationEnabled(enabled: boolean): void {
+        if (Notification && Notification.permission !== "granted") {
+            Notification.requestPermission(function (status) {
+                if (Notification.permission !== status) {
+                    Notification.permission = status;
+                }
+            });
+        }
+
+        this.save();
+    }
+
+    isNotificationEnabled(): boolean {
+        return Notification && Notification.permission === "granted";
     }
 
     private save(): void {
